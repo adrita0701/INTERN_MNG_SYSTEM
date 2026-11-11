@@ -10,6 +10,7 @@ const Intern = require('../models/Intern');
 const Task = require('../models/Task');
 const Document = require('../models/Document');
 const auth = require('../middleware/auth');
+const { createStorage, removeStoredFile } = require('../database/fileStorage');
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, '../uploads');
@@ -17,16 +18,8 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Multer Storage Configuration
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Multer Storage Configuration (local disk, or Supabase Storage when configured)
+const storage = createStorage(uploadDir);
 
 // Multer File Filter for Shared Documents & Media
 const documentFilter = (req, file, cb) => {
@@ -474,15 +467,8 @@ router.delete('/documents/:id', auth('admin'), async (req, res) => {
       return res.status(404).json({ message: 'Document not found' });
     }
 
-    // Try removing file from disk if it exists
-    const filePath = path.join(uploadDir, doc.filename);
-    if (fs.existsSync(filePath)) {
-      try {
-        fs.unlinkSync(filePath);
-      } catch (e) {
-        console.warn('Could not delete file from disk:', e.message);
-      }
-    }
+    // Remove the stored file (local disk or Supabase Storage)
+    await removeStoredFile(uploadDir, doc.filename);
 
     await Document.findByIdAndDelete(req.params.id);
     res.json({ message: 'Document deleted successfully' });

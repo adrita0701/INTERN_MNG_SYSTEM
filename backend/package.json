@@ -5,9 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "migrate:supabase": "node database/migrateToSupabase.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

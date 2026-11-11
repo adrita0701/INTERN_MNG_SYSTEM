@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 const { LocalTask } = require('../database/localStore');
+const { SupaTask } = require('../database/supabaseStore');
+const { isSupabaseEnabled } = require('../database/supabaseClient');
 
 const imageSchema = new mongoose.Schema({
   filename: {
@@ -82,39 +84,20 @@ const taskSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const MongooseTask = mongoose.models.Task || mongoose.model('Task', taskSchema);
-
 const isLocalDB = () => global.USE_LOCAL_DB || !mongoose.connection || mongoose.connection.readyState !== 1;
 
+// Pick the active backend: Supabase > MongoDB > local JSON file
+const impl = () => (isSupabaseEnabled() ? SupaTask : isLocalDB() ? LocalTask : MongooseTask);
+
 function Task(data) {
-  if (isLocalDB()) {
-    return new LocalTask(data);
-  }
-  return new MongooseTask(data);
+  const Impl = impl();
+  return new Impl(data);
 }
 
-Task.countDocuments = function(...args) {
-  if (isLocalDB()) return LocalTask.countDocuments(...args);
-  return MongooseTask.countDocuments(...args);
-};
-
-Task.find = function(...args) {
-  if (isLocalDB()) return LocalTask.find(...args);
-  return MongooseTask.find(...args);
-};
-
-Task.findById = function(...args) {
-  if (isLocalDB()) return LocalTask.findById(...args);
-  return MongooseTask.findById(...args);
-};
-
-Task.findOne = function(...args) {
-  if (isLocalDB()) return LocalTask.findOne(...args);
-  return MongooseTask.findOne(...args);
-};
-
-Task.deleteMany = function(...args) {
-  if (isLocalDB()) return LocalTask.deleteMany(...args);
-  return MongooseTask.deleteMany(...args);
-};
+Task.countDocuments = (...args) => impl().countDocuments(...args);
+Task.find = (...args) => impl().find(...args);
+Task.findById = (...args) => impl().findById(...args);
+Task.findOne = (...args) => impl().findOne(...args);
+Task.deleteMany = (...args) => impl().deleteMany(...args);
 
 module.exports = Task;

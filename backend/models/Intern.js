@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 const { LocalIntern } = require('../database/localStore');
+const { SupaIntern } = require('../database/supabaseStore');
+const { isSupabaseEnabled } = require('../database/supabaseClient');
 
 const internSchema = new mongoose.Schema({
   fullName: {
@@ -36,39 +38,20 @@ const internSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const MongooseIntern = mongoose.models.Intern || mongoose.model('Intern', internSchema);
-
 const isLocalDB = () => global.USE_LOCAL_DB || !mongoose.connection || mongoose.connection.readyState !== 1;
 
+// Pick the active backend: Supabase > MongoDB > local JSON file
+const impl = () => (isSupabaseEnabled() ? SupaIntern : isLocalDB() ? LocalIntern : MongooseIntern);
+
 function Intern(data) {
-  if (isLocalDB()) {
-    return new LocalIntern(data);
-  }
-  return new MongooseIntern(data);
+  const Impl = impl();
+  return new Impl(data);
 }
 
-Intern.countDocuments = function(...args) {
-  if (isLocalDB()) return LocalIntern.countDocuments(...args);
-  return MongooseIntern.countDocuments(...args);
-};
-
-Intern.find = function(...args) {
-  if (isLocalDB()) return LocalIntern.find(...args);
-  return MongooseIntern.find(...args);
-};
-
-Intern.findById = function(...args) {
-  if (isLocalDB()) return LocalIntern.findById(...args);
-  return MongooseIntern.findById(...args);
-};
-
-Intern.findOne = function(...args) {
-  if (isLocalDB()) return LocalIntern.findOne(...args);
-  return MongooseIntern.findOne(...args);
-};
-
-Intern.findByIdAndDelete = function(...args) {
-  if (isLocalDB()) return LocalIntern.findByIdAndDelete(...args);
-  return MongooseIntern.findByIdAndDelete(...args);
-};
+Intern.countDocuments = (...args) => impl().countDocuments(...args);
+Intern.find = (...args) => impl().find(...args);
+Intern.findById = (...args) => impl().findById(...args);
+Intern.findOne = (...args) => impl().findOne(...args);
+Intern.findByIdAndDelete = (...args) => impl().findByIdAndDelete(...args);
 
 module.exports = Intern;

@@ -1,0 +1,23 @@
+# Render Blueprint - Internship Management System
+# One web service: builds the React frontend, then the Express backend serves both
+# the API (/api/...) and the frontend from the same URL. Data + files live in Supabase.
+services:
+  - type: web
+    name: intern-mng-system
+    runtime: node
+    plan: free
+    buildCommand: >-
+      cd frontend && npm ci --include=dev &&
+      VITE_BASE_PATH=/ VITE_API_BASE= npm run build &&
+      cd ../backend && npm ci --omit=dev
+    startCommand: cd backend && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false

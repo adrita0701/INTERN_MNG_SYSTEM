@@ -9,6 +9,7 @@ const Intern = require('../models/Intern');
 const Task = require('../models/Task');
 const Document = require('../models/Document');
 const auth = require('../middleware/auth');
+const { createStorage } = require('../database/fileStorage');
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, '../uploads');
@@ -16,16 +17,8 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Multer Storage Configuration
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Multer Storage Configuration (local disk, or Supabase Storage when configured)
+const storage = createStorage(uploadDir);
 
 // Multer File Filter for Screenshots (Images only)
 const imageFilter = (req, file, cb) => {

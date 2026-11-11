@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 const { LocalDocument } = require('../database/localStore');
+const { SupaDocument } = require('../database/supabaseStore');
+const { isSupabaseEnabled } = require('../database/supabaseClient');
 
 const documentSchema = new mongoose.Schema({
   intern: {
@@ -44,34 +46,19 @@ const documentSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const MongooseDocument = mongoose.models.Document || mongoose.model('Document', documentSchema);
-
 const isLocalDB = () => global.USE_LOCAL_DB || !mongoose.connection || mongoose.connection.readyState !== 1;
 
+// Pick the active backend: Supabase > MongoDB > local JSON file
+const impl = () => (isSupabaseEnabled() ? SupaDocument : isLocalDB() ? LocalDocument : MongooseDocument);
+
 function Document(data) {
-  if (isLocalDB()) {
-    return new LocalDocument(data);
-  }
-  return new MongooseDocument(data);
+  const Impl = impl();
+  return new Impl(data);
 }
 
-Document.find = function(...args) {
-  if (isLocalDB()) return LocalDocument.find(...args);
-  return MongooseDocument.find(...args);
-};
-
-Document.findById = function(...args) {
-  if (isLocalDB()) return LocalDocument.findById(...args);
-  return MongooseDocument.findById(...args);
-};
-
-Document.findByIdAndDelete = function(...args) {
-  if (isLocalDB()) return LocalDocument.findByIdAndDelete(...args);
-  return MongooseDocument.findByIdAndDelete(...args);
-};
-
-Document.deleteMany = function(...args) {
-  if (isLocalDB()) return LocalDocument.deleteMany(...args);
-  return MongooseDocument.deleteMany(...args);
-};
+Document.find = (...args) => impl().find(...args);
+Document.findById = (...args) => impl().findById(...args);
+Document.findByIdAndDelete = (...args) => impl().findByIdAndDelete(...args);
+Document.deleteMany = (...args) => impl().deleteMany(...args);
 
 module.exports = Document;
